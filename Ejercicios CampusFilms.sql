@@ -12,7 +12,7 @@ FROM
 
 -- 3- Devuelve la lista de todos los estudios de grabación que estén activos
 SELECT 	
-	*
+	STUDIO_NAME AS ACTIVE_STUDIOS
 FROM
 	STUDIOS
 WHERE 
@@ -20,7 +20,7 @@ WHERE
 
 -- 4- Devuelve una lista de los 20 últimos miembros en anotarse a la plataforma
 SELECT
-	*
+	USER_NAME 
 FROM
 	USERS
 ORDER BY 
@@ -99,7 +99,7 @@ SELECT
 FROM
 	DIRECTORS
 WHERE
-	YEAR(NOW) - YEAR(DIRECTOR_BIRTH_DATE) <= 40;
+	(YEAR(NOW) - YEAR(DIRECTOR_BIRTH_DATE)) <= 40;
 
 -- 12- Indica la edad media de los directores vivos
 SELECT 
@@ -141,7 +141,9 @@ INNER JOIN
 	ON
 		u.USER_ID = uma.USER_ID
 WHERE
-	uma.ACCESS_DATE >= '2010-01-01';
+	uma.ACCESS_DATE BETWEEN '2010-01-01' AND '2015-12-31';
+
+SELECT * FROM USER_MOVIE_ACCESS uma;
 
 -- 16- Devuelve cuantas películas hay de cada país
 SELECT 
@@ -168,18 +170,23 @@ WHERE
 	
 -- 18- Devuelve todas las películas creadas por directores nacidos a partir de 1980 y que todavía están vivos
 SELECT
-	*
+	m.*
 FROM
-	DIRECTORS
+	MOVIES m 
+INNER JOIN
+	DIRECTORS d
+	ON
+		m.DIRECTOR_ID = d.DIRECTOR_ID
 WHERE
-	DIRECTOR_BIRTH_DATE >= '1980-01-01'
+	d.DIRECTOR_BIRTH_DATE >= '1980-01-01'
 	AND
-	DIRECTOR_DEAD_DATE IS NULL;
+	d.DIRECTOR_DEAD_DATE IS NULL;
 
 /* 19- Indica si hay alguna coincidencia de nacimiento de ciudad (y si las hay, indicarlas) entre los miembros de la plataforma y 
  los directores */
 SELECT 
-	* 
+	u.USER_TOWN,
+	d.DIRECTOR_BIRTH_PLACE 
 FROM
 	USERS u
 INNER JOIN
@@ -223,16 +230,18 @@ SELECT
 	COUNT(m.MOVIE_NAME) AS MOVIES_MADE
 FROM
 	MOVIES m 
-INNER JOIN
+RIGHT JOIN
 	DIRECTORS d 
 	ON
 	m.DIRECTOR_ID = d.DIRECTOR_ID
-WHERE
+	AND
 	(m.MOVIE_RELEASE_DATE - d.DIRECTOR_BIRTH_DATE) < 41
 GROUP BY
 	DIRECTOR
 ORDER BY
 	MOVIES_MADE DESC;
+
+SELECT * FROM DIRECTORS d 
 
 -- 23- Indica cuál es la media de duración de las películas de cada director
 SELECT
@@ -261,17 +270,19 @@ INNER JOIN
 	ON
 		m.MOVIE_ID = uma.MOVIE_ID 
 WHERE
-	ACCESS_DATE >= '2015-12-19'
+	ACCESS_DATE >= '2015-12-19' -- last access date is '2017-12-19'
 GROUP BY
 	m.MOVIE_NAME
 ORDER BY
 	DURATION;
 
+-- SELECT * FROM USER_MOVIE_ACCESS uma ORDER BY ACCESS_DATE DESC;
+
 /* 25- Indica el número de películas que hayan hecho los directores durante las décadas de los 60, 70 y 80 que contengan la palabra 
  “The” en cualquier parte del título */
 SELECT 
-	d.DIRECTOR_NAME,
-	COUNT(m.MOVIE_NAME) AS "60s_70s_80s_MOVIES"
+	d.DIRECTOR_NAME AS DIRECTOR,
+	COUNT(m.MOVIE_ID) AS "60s_70s_80s_MOVIES"
 FROM
 	MOVIES m
 INNER JOIN
@@ -279,11 +290,11 @@ INNER JOIN
 	ON
 		m.DIRECTOR_ID = d.DIRECTOR_ID 
 WHERE
-	m.MOVIE_NAME LIKE '%The%'
+	LOWER(m.MOVIE_NAME) LIKE '%the%'
 	AND
-	m.MOVIE_RELEASE_DATE BETWEEN '1960-01-01' AND '1980-12-31'
+	m.MOVIE_RELEASE_DATE BETWEEN '1960-01-01' AND '1989-12-31'
 GROUP BY
-	d.DIRECTOR_NAME;
+	DIRECTOR;
 
 -- 26- Lista nombre, nacionalidad y director de todas las películas
 SELECT 
@@ -308,7 +319,7 @@ ORDER BY
 -- 27- Muestra las películas con los actores que han participado en cada una de ellas
 SELECT
 	m.MOVIE_NAME AS MOVIE,
-	a.ACTOR_NAME
+	a.ACTOR_NAME AS "ACTORS"
 FROM
 	MOVIES m 
 INNER JOIN
@@ -321,12 +332,12 @@ INNER JOIN
 		ma.ACTOR_ID = a.ACTOR_ID
 ORDER BY
 	MOVIE,
-	a.ACTOR_NAME;
+	"ACTORS";
 
 -- 28- Indica cual es el nombre del director del que más películas se ha accedido
 SELECT
 	d.DIRECTOR_NAME AS DIRECTOR,
-	COUNT(uma.ACCESS_DATE) AS ACCESS
+	COUNT(uma.ACCESS_DATE) AS "ACCESS_#"
 FROM
 	DIRECTORS d 
 INNER JOIN
@@ -340,7 +351,7 @@ INNER JOIN
 GROUP BY 
 	DIRECTOR
 ORDER BY 
-	ACCESS DESC
+	"ACCESS_#" DESC
 LIMIT
 	1;
 
@@ -348,7 +359,7 @@ LIMIT
 SELECT 
 	s.STUDIO_NAME AS STUDIO,
 	m.MOVIE_NAME AS MOVIE,
-	SUM(a.AWARD_WIN) AS AWARDS
+	SUM(a.AWARD_WIN) AS AWARDS_PER_MOVIE
 FROM
 	STUDIOS s
 INNER JOIN
@@ -364,12 +375,12 @@ GROUP BY
 	MOVIE
 ORDER BY 
 	STUDIO,
-	AWARDS,
+	AWARDS_PER_MOVIE ,
 	MOVIE;
 
 SELECT 
 	s.STUDIO_NAME AS STUDIO,
-	SUM(a.AWARD_WIN) AS AWARDS
+	SUM(a.AWARD_WIN) AS TOTAL_AWARDS
 FROM
 	STUDIOS s
 INNER JOIN
@@ -383,7 +394,7 @@ INNER JOIN
 GROUP BY
 	STUDIO
 ORDER BY 
-	AWARDS DESC;
+	TOTAL_AWARDS DESC;
 
 /* 30- Indica el número de premios a los que estuvo nominado un actor, pero que no ha conseguido (Si una película está nominada 
 a un premio, su actor también lo está) */
@@ -410,7 +421,6 @@ GROUP BY
 	MOVIE
 ORDER BY 
 	ACTOR,
-	MOVIE,
 	NOT_WON_NOMINATION;
 
 SELECT

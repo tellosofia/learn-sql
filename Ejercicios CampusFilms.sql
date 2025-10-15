@@ -16,7 +16,7 @@ SELECT
 FROM
 	STUDIOS
 WHERE 
-	STUDIO_ACTIVE = 1;
+	STUDIO_ACTIVE = 1; -- o con TRUE porque el tipo de dato es BIT
 
 -- 4- Devuelve una lista de los 20 últimos miembros en anotarse a la plataforma
 SELECT
@@ -31,7 +31,7 @@ LIMIT
 -- 5- Devuelve las 20 duraciones de películas más frecuentes, ordenados de mayor a menor
 SELECT
 	MOVIE_DURATION,
-	COUNT(MOVIE_DURATION) AS DURATION_COUNT
+	COUNT(MOVIE_ID) AS DURATION_COUNT -- mejor siempre contar con un ID o algo así que *
 FROM
 	MOVIES
 GROUP BY 
@@ -47,25 +47,27 @@ SELECT
 FROM
 	MOVIES
 WHERE
-	MOVIE_RELEASE_DATE >= '2000-01-01'
+	MOVIE_RELEASE_DATE >= '2000-01-01' -- o YEAR (DATE) >= 2000 O con DATE en cada uno(sqlite) 
 	AND
 	MOVIE_NAME LIKE 'A%';
 
 -- 7- Devuelve los actores nacidos un mes de Junio
 SELECT
-	*
+	ACTOR_NAME,
+	ACTOR_BIRTH_DATE 
 FROM
 	ACTORS
 WHERE
-	EXTRACT(MONTH FROM ACTOR_BIRTH_DATE) = 6;
+	EXTRACT(MONTH FROM ACTOR_BIRTH_DATE) = 6; -- o solo MONTH(ACTOR_BIRTH_DATE)
 
 -- 8- Devuelve los actores nacidos cualquier mes que no sea Junio y que sigan vivos
 SELECT
-	*
+	ACTOR_NAME,
+	ACTOR_BIRTH_DATE 
 FROM
 	ACTORS
 WHERE
-	EXTRACT(MONTH FROM ACTOR_BIRTH_DATE) <> 6
+	EXTRACT(MONTH FROM ACTOR_BIRTH_DATE) <> 6 -- o MONTH(ACTOR_BIRTH_DATE) != 6
 	AND
 	ACTOR_DEAD_DATE IS NULL;
 
@@ -82,14 +84,38 @@ WHERE
 ORDER BY
 	AGE;
 
+-- otra manera
+SELECT
+	DIRECTOR_NAME AS DIRECTOR,
+	DATEDIFF(YEAR, DIRECTOR_BIRTH_DATE, TODAY()) AS AGE
+FROM
+	DIRECTORS
+WHERE
+	DATEDIFF(YEAR, DIRECTOR_BIRTH_DATE, TODAY()) <= 50
+	AND
+	DIRECTOR_DEAD_DATE IS NULL
+ORDER BY
+	AGE;
+
 -- 10- Devuelve el nombre y la edad de todos los actores menores de 50 años que hayan fallecido
 SELECT
 	ACTOR_NAME,
-	YEAR(ACTOR_DEAD_DATE) - YEAR(ACTOR_BIRTH_DATE) AS AGE
+	YEAR(ACTOR_DEAD_DATE) - YEAR(ACTOR_BIRTH_DATE) AS AGE 
 FROM
 	ACTORS
 WHERE 	
-	(YEAR(NOW) - YEAR(ACTOR_BIRTH_DATE)) <= 50
+	(YEAR(ACTOR_DEAD_DATE) - YEAR(ACTOR_BIRTH_DATE)) <= 50
+	AND
+	ACTOR_DEAD_DATE IS NOT NULL;
+
+--con datediff
+SELECT
+	ACTOR_NAME,
+	DATEDIFF(YEAR, ACTOR_BIRTH_DATE, ACTOR_DEAD_DATE) AS AGE 
+FROM
+	ACTORS
+WHERE 	
+	DATEDIFF(YEAR, ACTOR_BIRTH_DATE, ACTOR_DEAD_DATE) <= 50
 	AND
 	ACTOR_DEAD_DATE IS NOT NULL;
 
@@ -101,9 +127,20 @@ FROM
 WHERE
 	(YEAR(NOW) - YEAR(DIRECTOR_BIRTH_DATE)) <= 40;
 
+-- DATEDIFF
+SELECT
+	DIRECTOR_NAME,
+	DIRECTOR_BIRTH_DATE 
+FROM
+	DIRECTORS
+WHERE
+	DIRECTOR_DEAD_DATE IS NULL 
+	AND
+	DATEDIFF(YEAR, DIRECTOR_BIRTH_DATE, TODAY()) <= 40;
+
 -- 12- Indica la edad media de los directores vivos
 SELECT 
-	AVG(YEAR(NOW) - YEAR(DIRECTOR_BIRTH_DATE))
+	AVG(YEAR(NOW) - YEAR(DIRECTOR_BIRTH_DATE)) -- IGUAL USAR DATEDIFF
 FROM
 	DIRECTORS
 WHERE
@@ -117,13 +154,21 @@ FROM
 WHERE 
 	ACTOR_DEAD_DATE IS NOT NULL;
 
+-- DATEDIFF - ES MÁS CORRECTO USAR DATEDIFF PARA QUE COJA TODO ADECUADAMENTE EN EL CÁLCULO
+SELECT 
+	AVG(DATEDIFF(YEAR, ACTOR_BIRTH_DATE, TODAY()))
+FROM
+	ACTORS
+WHERE 
+	ACTOR_DEAD_DATE IS NOT NULL;
+
 -- 14- Devuelve el nombre de todas las películas y el nombre del estudio que las ha realizado
 SELECT
 	m.MOVIE_NAME,
 	s.STUDIO_NAME
 FROM
 	MOVIES m
-LEFT OUTER JOIN 
+INNER JOIN 
 	STUDIOS s 
 	ON 
 		m.STUDIO_ID = s.STUDIO_ID
@@ -133,7 +178,7 @@ ORDER BY
 	
 -- 15- Devuelve los miembros que accedieron al menos una película entre el año 2010 y el 2015
 SELECT
-	u.*
+	DISTINCT (u.USER_NAME) 
 FROM
 	USERS u 
 INNER JOIN
@@ -141,7 +186,21 @@ INNER JOIN
 	ON
 		u.USER_ID = uma.USER_ID
 WHERE
-	uma.ACCESS_DATE BETWEEN '2010-01-01' AND '2015-12-31';
+	uma.ACCESS_DATE BETWEEN '2010-01-01' AND '2015-12-31'; 
+
+-- con YEAR
+SELECT
+	DISTINCT (u.USER_NAME)
+FROM
+	USERS u 
+INNER JOIN
+	USER_MOVIE_ACCESS uma 
+	ON
+		u.USER_ID = uma.USER_ID
+WHERE
+	YEAR(uma.ACCESS_DATE) >= 2010
+	AND
+	YEAR(uma.ACCESS_DATE) <= 2015;
 
 SELECT * FROM USER_MOVIE_ACCESS uma;
 
@@ -151,7 +210,7 @@ SELECT
 	COUNT(m.MOVIE_NAME) AS MOVIES_PER_COUNTRY
 FROM 	
 	MOVIES m
-LEFT OUTER JOIN
+INNER JOIN
 	NATIONALITIES n
 	ON
 		m.NATIONALITY_ID = n.NATIONALITY_ID
@@ -166,7 +225,28 @@ SELECT
 FROM 
 	MOVIES m
 WHERE
-	m.GENRE_ID = 2;
+	m.GENRE_ID = 2; -- mejor usar 'Documentary' por si el genre cambiara o usar una subconsulta
+
+-- CON JOIN
+SELECT 
+	m.MOVIE_NAME,
+	g.GENRE_NAME 
+FROM 
+	MOVIES m
+INNER JOIN 
+	GENRES g 
+	ON
+	m.GENRE_ID = g.GENRE_ID 
+WHERE
+	g.GENRE_NAME LIKE 'Documentary';
+
+-- con Subquery
+SELECT 
+	m.*
+FROM 
+	MOVIES m
+WHERE
+	m.GENRE_ID = (SELECT GENRE_ID FROM GENRES WHERE GENRE_NAME LIKE 'Documentary');
 	
 -- 18- Devuelve todas las películas creadas por directores nacidos a partir de 1980 y que todavía están vivos
 SELECT
@@ -178,9 +258,26 @@ INNER JOIN
 	ON
 		m.DIRECTOR_ID = d.DIRECTOR_ID
 WHERE
-	d.DIRECTOR_BIRTH_DATE >= '1980-01-01'
+	d.DIRECTOR_BIRTH_DATE >= '1980-01-01' -- si hacemos de esta manera puede hacer inconsistencias en la fecha
 	AND
 	d.DIRECTOR_DEAD_DATE IS NULL;
+
+-- mejor acostumbrarnos a usar DATE etc., funciones que extraigan la info entera, además es más eficiente
+-- que extraer la info de una cadena de texto
+SELECT
+	m.*
+FROM
+	MOVIES m 
+INNER JOIN
+	DIRECTORS d
+	ON
+		m.DIRECTOR_ID = d.DIRECTOR_ID
+WHERE
+	YEAR(d.DIRECTOR_BIRTH_DATE) >= 1980 -- si hacemos de esta manera puede hacer inconsistencias en la fecha
+	AND
+	d.DIRECTOR_DEAD_DATE IS NULL;
+
+-- con subquery ¿?
 
 /* 19- Indica si hay alguna coincidencia de nacimiento de ciudad (y si las hay, indicarlas) entre los miembros de la plataforma y 
  los directores */
@@ -192,12 +289,14 @@ FROM
 INNER JOIN
 	DIRECTORS d
 	ON 	
-		u.USER_TOWN = d.DIRECTOR_BIRTH_PLACE;
+		u.USER_TOWN = d.DIRECTOR_BIRTH_PLACE; -- SQL es case sensitive
+		
+-- podría usarse el upper/lower pero en esta bbdd no es necesario
 
 -- 20- Devuelve el nombre y el año de todas las películas que han sido producidas por un estudio que actualmente no esté activo
 SELECT
 	m.MOVIE_NAME,
-	EXTRACT(YEAR FROM m.MOVIE_RELEASE_DATE) AS "YEAR"
+	YEAR(m.MOVIE_RELEASE_DATE) AS "YEAR"
 FROM
 	MOVIES m
 INNER JOIN
@@ -205,7 +304,7 @@ INNER JOIN
 	ON
 		m.STUDIO_ID = s.STUDIO_ID
 WHERE
-	s.STUDIO_ACTIVE = 0
+	s.STUDIO_ACTIVE = 0 -- o FALSE
 ORDER BY
 	"YEAR";
 
@@ -227,21 +326,21 @@ LIMIT
 -- 22- Indica cuántas películas ha realizado cada director antes de cumplir 41 años
 SELECT
 	d.DIRECTOR_NAME AS DIRECTOR,
-	COUNT(m.MOVIE_NAME) AS MOVIES_MADE
+	COUNT(m.MOVIE_ID) AS MOVIES_MADE
 FROM
 	MOVIES m 
-RIGHT JOIN
+INNER JOIN
 	DIRECTORS d 
 	ON
 	m.DIRECTOR_ID = d.DIRECTOR_ID
-	AND
-	(m.MOVIE_RELEASE_DATE - d.DIRECTOR_BIRTH_DATE) < 41
+WHERE
+	DATEDIFF(YEAR, d.DIRECTOR_BIRTH_DATE, m.MOVIE_RELEASE_DATE) < 41
 GROUP BY
 	DIRECTOR
 ORDER BY
 	MOVIES_MADE DESC;
 
-SELECT * FROM DIRECTORS d 
+SELECT * FROM DIRECTORS d; 
 
 -- 23- Indica cuál es la media de duración de las películas de cada director
 SELECT
@@ -270,11 +369,22 @@ INNER JOIN
 	ON
 		m.MOVIE_ID = uma.MOVIE_ID 
 WHERE
-	ACCESS_DATE >= '2015-12-19' -- last access date is '2017-12-19'
+	ACCESS_DATE >= '2015-12-19' -- last access date is '2017-12-19' -- corregir
 GROUP BY
 	m.MOVIE_NAME
 ORDER BY
-	DURATION;
+	DURATION; -- deberían ser 29
+	
+SELECT GROUP_CONCAT(M.MOVIE_NAME) AS MOVIE_NAME,
+       M.MOVIE_DURATION
+FROM USER_MOVIE_ACCESS UMA
+INNER JOIN MOVIES M ON UMA.MOVIE_ID = M.MOVIE_ID
+WHERE DATEADD(YEAR, -2, DATE '2019-01-25') < UMA.ACCESS_DATE
+GROUP BY M.MOVIE_DURATION
+ORDER BY M.MOVIE_DURATION ASC;
+-- LIMIT 1; -- debería ser sólo una o las películas de los 2 últimos años?
+
+-- esta debería ser sólo una
 
 -- SELECT * FROM USER_MOVIE_ACCESS uma ORDER BY ACCESS_DATE DESC;
 
@@ -313,7 +423,6 @@ INNER JOIN
 	m.NATIONALITY_ID = n.NATIONALITY_ID
 ORDER BY 
 	NATIONALITY,
-	MOVIE,
 	DIRECTOR;
 
 -- 27- Muestra las películas con los actores que han participado en cada una de ellas
@@ -447,7 +556,7 @@ ORDER BY
 
 -- 31- Indica cuantos actores y directores hicieron películas para los estudios no activos
 SELECT 
-	s.STUDIO_NAME AS STUDIO,
+	--s.STUDIO_NAME AS STUDIO,
 	COUNT(DISTINCT a.ACTOR_NAME) AS ACTOR_COUNT,
 	COUNT(DISTINCT d.DIRECTOR_NAME) AS DIRECTOR_COUNT
 FROM
@@ -469,14 +578,21 @@ INNER JOIN
 	ON
 		ma.ACTOR_ID = a.ACTOR_ID
 WHERE
-	s.STUDIO_ACTIVE = 0
-GROUP BY
-	STUDIO;
+	s.STUDIO_ACTIVE = 0;
+--GROUP BY
+	--STUDIO;
+
+SELECT COUNT(DISTINCT M.DIRECTOR_ID) AS DIRECTOR_NUMBER,
+       COUNT(DISTINCT MA.ACTOR_ID) AS ACTOR_NUMBER
+FROM STUDIOS S
+INNER JOIN MOVIES M ON M.STUDIO_ID = S.STUDIO_ID
+INNER JOIN MOVIES_ACTORS MA ON MA.MOVIE_ID = M.MOVIE_ID
+WHERE S.STUDIO_ACTIVE = FALSE;
 
 /* 32- Indica el nombre, ciudad, y teléfono de todos los miembros de la plataforma que hayan accedido películas que hayan sido 
 nominadas a más de 150 premios y ganaran menos de 50 */
 SELECT 
-	u.USER_NAME AS USER,
+	DISTINCT u.USER_NAME AS USER,
 	u.USER_TOWN AS CITY,
 	u.USER_PHONE AS PHONE
 FROM 
@@ -498,6 +614,16 @@ WHERE
 	AND
 	a.AWARD_WIN < 50;
 
+SELECT DISTINCT U.USER_NAME,
+                U.USER_TOWN,
+                U.USER_PHONE
+FROM USER_MOVIE_ACCESS UMA
+INNER JOIN USERS U ON UMA.USER_ID = U.USER_ID
+WHERE UMA.MOVIE_ID IN
+    (SELECT MOVIE_ID
+     FROM AWARDS
+     WHERE AWARD_NOMINATION > 150
+       AND AWARD_WIN < 50);
 /* 33- Comprueba si hay errores en la BD entre las películas y directores (un director muerto en el 76 no puede dirigir una película 
 en el 88)*/
 SELECT
@@ -514,21 +640,36 @@ WHERE
 /* 34- Utilizando la información de la sentencia anterior, modifica la fecha de defunción a un año más tarde del estreno de la película 
 (mediante sentencia SQL)*/
 
+-- se puede hacer mediante un UPDATE o una cosa específica de hsqldb que es MERGE INTO
+
 -- UPDATE DIRECTORS SET DIRECTOR_DEAD_DATE ... WHERE DIRECTOR_ID = 27 
 -- UPDATE DIRECTORS SET DIRECTOR_DEAD_DATE = '2010-04-08' WHERE DIRECTOR_ID = 47;
 
 /* otra opción */
 
-/* UPDATE
+UPDATE
 	DIRECTORS
 SET
 	DIRECTOR_DEAD_DATE = (
 	SELECT
-		DATE_ADD(MOVIE_RELEASE_DATE , INTERVAL '1' YEAR)
+		DATE_ADD(MAX(m.MOVIE_RELEASE_DATE), INTERVAL '1' YEAR)
 	FROM
-		MOVIES)
+			MOVIES m
+	INNER JOIN
+			DIRECTORS d
+			ON
+				m.DIRECTOR_ID = d.DIRECTOR_ID
+	WHERE 
+			d.DIRECTOR_DEAD_DATE  IS NOT NULL 
+		AND
+			m.MOVIE_RELEASE_DATE > d.DIRECTOR_DEAD_DATE
+		AND
+			m.DIRECTOR_ID = d.DIRECTOR_ID 
+	GROUP BY
+		d.DIRECTOR_ID 
+			)
 WHERE
-	DIRECTOR ID IN (
+	DIRECTOR_ID IN (
 	SELECT
 			DISTINCT m.DIRECTOR_ID
 	FROM
@@ -537,10 +678,31 @@ WHERE
 			DIRECTORS d
 			ON
 				m.DIRECTOR_ID = d.DIRECTOR_ID
-	WHERE 
+	WHERE
+			d.DIRECTOR_DEAD_DATE  IS NOT NULL 
+		AND
 			m.MOVIE_RELEASE_DATE > d.DIRECTOR_DEAD_DATE
 		AND
-			m.DIRECTOR_ID = d.DIRECTOR_ID); */
+			-- m.DIRECTOR_ID = d.DIRECTOR_ID); 
+
+-- Solución de Pablo
+
+UPDATE DIRECTORS
+SET DIRECTOR_DEAD_DATE =
+  (SELECT MAX(DATEADD(YEAR, 1, M.MOVIE_RELEASE_DATE)) AS DIRECTOR_DEAD_DATE
+   FROM MOVIES M
+   INNER JOIN DIRECTORS D ON M.DIRECTOR_ID = D.DIRECTOR_ID
+   WHERE D.DIRECTOR_DEAD_DATE IS NOT NULL
+     AND D.DIRECTOR_DEAD_DATE < M.MOVIE_RELEASE_DATE
+     AND D.DIRECTOR_ID = DIRECTORS.DIRECTOR_ID
+   GROUP BY DIRECTOR_NAME,
+            DIRECTOR_DEAD_DATE)
+WHERE DIRECTOR_ID IN
+    (SELECT DISTINCT D.DIRECTOR_ID
+     FROM MOVIES M
+     INNER JOIN DIRECTORS D ON M.DIRECTOR_ID = D.DIRECTOR_ID
+     WHERE D.DIRECTOR_DEAD_DATE IS NOT NULL
+       AND D.DIRECTOR_DEAD_DATE < M.MOVIE_RELEASE_DATE);
 
 -- 35- Indica cuál es el género favorito de cada uno de los directores cuando dirigen una película
 WITH G_COUNT AS(
@@ -573,7 +735,7 @@ GROUP BY
 )
 SELECT
 	gen.DIRECTOR,
-	gen.GENRE AS FAV_GENRE,
+	gen.GENRE AS FAV_GENRE, -- group_concat + group by
 	gen.GENRE_COUNT
 FROM
 	G_COUNT gen
@@ -613,6 +775,32 @@ GROUP BY
 	DIRECTOR
 ORDER BY 
 	MAX(GENRE_COUNT) DESC;
+
+-- Solución Pablo
+WITH GENRE_COUNTS AS
+  (SELECT D.DIRECTOR_ID,
+          D.DIRECTOR_NAME,
+          G.GENRE_ID,
+          G.GENRE_NAME,
+          COUNT(*) AS NUM_MOVIES
+   FROM MOVIES M
+   INNER JOIN GENRES G ON M.GENRE_ID = G.GENRE_ID
+   INNER JOIN DIRECTORS D ON M.DIRECTOR_ID = D.DIRECTOR_ID
+   GROUP BY D.DIRECTOR_ID,
+            D.DIRECTOR_NAME,
+            G.GENRE_ID,
+            G.GENRE_NAME),
+     MAX_GENRE AS
+  (SELECT DIRECTOR_ID,
+          MAX(NUM_MOVIES) AS MAX_MOVIES
+   FROM GENRE_COUNTS
+   GROUP BY DIRECTOR_ID)
+SELECT GC.DIRECTOR_NAME,
+       GROUP_CONCAT(GC.GENRE_NAME) AS GENRE_NAME
+FROM GENRE_COUNTS GC
+INNER JOIN MAX_GENRE MG ON GC.DIRECTOR_ID = MG.DIRECTOR_ID
+AND GC.NUM_MOVIES = MG.MAX_MOVIES
+GROUP BY GC.DIRECTOR_NAME;
 
 -- 36- Indica cuál es la nacionalidad favorita de cada uno de los estudios en la producción de las películas
 SELECT
@@ -677,6 +865,42 @@ ORDER BY
 	c.STUDIO,
 	mx.TOP_COUNTRY DESC;
 
+-- Solución Pablo
+SELECT STUDIO_NAME,
+       GROUP_CONCAT(NATIONALITY_NAME) AS NATIONALITY_NAME
+FROM
+  (SELECT COUNT(N.NATIONALITY_ID) AS NUM_MOVIES,
+          S.STUDIO_NAME,
+          N.NATIONALITY_NAME,
+          S.STUDIO_ID,
+          N.NATIONALITY_ID
+   FROM MOVIES M
+   INNER JOIN NATIONALITIES N ON N.NATIONALITY_ID = M.NATIONALITY_ID
+   INNER JOIN STUDIOS S ON S.STUDIO_ID = M.STUDIO_ID
+   GROUP BY S.STUDIO_ID,
+            N.NATIONALITY_ID
+   ORDER BY S.STUDIO_ID ASC,
+            NUM_MOVIES DESC) TOT
+INNER JOIN
+  (SELECT STUDIO_ID,
+          MAX (NUM_MOVIES) AS NUM_MOVIES
+   FROM
+     (SELECT COUNT(N.NATIONALITY_ID) AS NUM_MOVIES,
+             S.STUDIO_NAME,
+             N.NATIONALITY_NAME,
+             S.STUDIO_ID,
+             N.NATIONALITY_ID
+      FROM MOVIES M
+      INNER JOIN NATIONALITIES N ON N.NATIONALITY_ID = M.NATIONALITY_ID
+      INNER JOIN STUDIOS S ON S.STUDIO_ID = M.STUDIO_ID
+      GROUP BY S.STUDIO_ID,
+               N.NATIONALITY_ID
+      ORDER BY S.STUDIO_ID ASC,
+               NUM_MOVIES DESC)
+   GROUP BY STUDIO_ID) MAX ON TOT.STUDIO_ID = MAX.STUDIO_ID
+AND TOT.NUM_MOVIES = MAX.NUM_MOVIES
+GROUP BY STUDIO_NAME;
+
 /* 37- Indica cuál fue la primera película a la que accedieron los miembros de la plataforma cuyos teléfonos tengan como último 
 dígito el ID de alguna nacionalidad*/
 WITH MEMBER_MOVIE AS (
@@ -717,6 +941,38 @@ INNER JOIN
 		mm.ACCESS_DATE = f.FIRST_DATE
 ORDER BY
 	f.FIRST_DATE;
+
+-- Solución Pablo
+WITH PHONE_DIGIT AS
+  (SELECT USER_NAME,
+          USER_ID,
+          SUBSTR(USER_PHONE, LENGTH(USER_PHONE), 1) AS LAST_NUMBER
+   FROM USERS),
+     USER_NAT AS
+  (SELECT N.NATIONALITY_ID,
+          M.USER_NAME,
+          M.USER_ID
+   FROM NATIONALITIES N
+   INNER JOIN PHONE_DIGIT M ON N.NATIONALITY_ID = M.LAST_NUMBER),
+     MOVIE_ACCESS AS
+  (SELECT UN.NATIONALITY_ID,
+          UN.USER_NAME,
+          UMA.USER_ID,
+          UMA.MOVIE_ID,
+          UMA.ACCESS_DATE
+   FROM USER_NAT UN
+   INNER JOIN USER_MOVIE_ACCESS UMA ON UN.USER_ID = UMA.USER_ID),
+     MIN_ACCESS AS
+  (SELECT USER_ID,
+          MIN(ACCESS_DATE) AS ACCESS_DATE
+   FROM MOVIE_ACCESS
+   GROUP BY USER_ID)
+SELECT MOA.USER_NAME,
+       M.MOVIE_NAME
+FROM MOVIE_ACCESS MOA
+INNER JOIN MIN_ACCESS MIA ON MOA.ACCESS_DATE = MIA.ACCESS_DATE
+AND MOA.USER_ID = MIA.USER_ID
+INNER JOIN MOVIES M ON MOA.MOVIE_ID = M.MOVIE_ID;
 		
 	
 	
